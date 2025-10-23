@@ -8,8 +8,6 @@ Here's the README for your airflow-dags repository:
 
   airflow-dags/
   ├── README.md
-  ├── CLAUDE.md
-  ├── .gitignore
   └── dags/
       └── mongodb_to_questdb_etl.py
 

@@ -1,0 +1,22 @@
+# Configuration for mongodb_to_questdb_etl DAG
+
+# MongoDB settings
+mongo:
+  host: "mongodb.default.svc.cluster.local"
+  port: 27017
+  database: "mydb"
+  collection: "readings"
+  # Connection/credentials should use Airflow Connections or environment variables
+
+# QuestDB settings
+questdb:
+  host: "questdb.questdb.svc.cluster.local"
+  port: 8812
+  database: "qdb"
+  # Credentials should use Airflow Connections or environment variables
+
+# DAG settings
+dag:
+  schedule_interval: "*/15 * * * *"
+  catchup: false
+  max_active_runs: 1

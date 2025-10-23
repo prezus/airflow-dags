@@ -8,59 +8,84 @@ This repository contains Apache Airflow DAG definitions for the Decepticon clust
 airflow-dags/
 ├── README.md
 └── dags/
+    ├── configs/
+    │   └── mongodb_to_questdb_etl.yaml
     └── mongodb_to_questdb_etl.py
-```
-
-## DAGs
-
-### mongodb_to_questdb_etl.py
-
-**Purpose**: ETL pipeline to sync data from MongoDB to QuestDB time-series database
-
-**Schedule**: Every 15 minutes (`*/15 * * * *`)
-
-**Tasks**:
-1. `get_last_sync_timestamp` - Retrieves the latest timestamp from QuestDB
-2. `extract_from_mongodb` - Extracts new documents from MongoDB since last sync
-3. `transform_data` - Transforms MongoDB documents to QuestDB schema
-4. `load_to_questdb` - Bulk loads data into QuestDB
-5. `send_notification` - Logs completion status
-
-**Configuration Variables** (set in Airflow UI):
-- `MONGO_URI` - MongoDB connection string (default: `mongodb://mongodb.default.svc.cluster.local:27017/`)
-- `MONGO_DATABASE` - MongoDB database name (default: `mydb`)
-- `MONGO_COLLECTION` - MongoDB collection name (default: `readings`)
-- `QUESTDB_HOST` - QuestDB hostname (default: `questdb.questdb.svc.cluster.local`)
-- `QUESTDB_PORT` - QuestDB PostgreSQL port (default: `8812`)
-- `QUESTDB_USER` - QuestDB username (default: `admin`)
-- `QUESTDB_PASSWORD` - QuestDB password (default: `quest`)
-- `QUESTDB_DATABASE` - QuestDB database (default: `qdb`)
-
-**Dependencies**:
-```python
-pymongo
-psycopg2-binary
 ```
 
 ## Deployment
 
 This repository is automatically synced to Airflow via git-sync every 60 seconds.
 
-Airflow Instance: https://airflow.decepticon.io
-
 Git-Sync Configuration:
 - Branch: main
 - Path: dags/
 - Sync Interval: 60 seconds
+
+## Configuration
+
+Each DAG should have its own configuration file in `dags/configs/` following the naming pattern `<dag_name>.yaml`.
+
+**Configuration files should contain**:
+- Hostnames and ports
+- Database/service names
+- DAG-specific parameters (schedule, catchup, etc.)
+- Non-sensitive settings
+
+**Configuration files should NOT contain**:
+- Passwords or API keys
+- Connection strings with credentials
+- Any sensitive data
+
+**For secrets and credentials**, use:
+- Airflow Connections (recommended)
+- Environment variables
+- External secret management (Vault, AWS Secrets Manager, etc.)
+
+**Example**: `dags/configs/my_dag.yaml`
+```yaml
+# Database settings
+database:
+  host: "db.example.com"
+  port: 5432
+  name: "mydb"
+  # Use Airflow Connection for credentials
+
+# DAG settings
+dag:
+  schedule_interval: "0 * * * *"
+  catchup: false
+```
+
+**Loading config in your DAG**:
+```python
+import yaml
+from pathlib import Path
+from airflow.hooks.base import BaseHook
+
+# Load config
+config_path = Path(__file__).parent / 'configs' / 'my_dag.yaml'
+with open(config_path) as f:
+    config = yaml.safe_load(f)
+
+# Get connection details
+db_host = config['database']['host']
+
+# Get credentials from Airflow Connection
+conn = BaseHook.get_connection('my_db_conn')
+db_password = conn.password
+```
 
 ## Development
 
 ### Adding a New DAG
 
 1. Create a new Python file in the dags/ directory
-2. Define your DAG using Airflow 3.x syntax
-3. Commit and push to main branch
-4. DAG will appear in Airflow UI within 60 seconds
+2. Create a corresponding config file in dags/configs/ (e.g., `my_dag.yaml`)
+3. Define your DAG using Airflow 3.x syntax
+4. Load configuration from the config file in your DAG
+5. Commit and push to main branch
+6. DAG will appear in Airflow UI within 60 seconds
 
 ### Testing DAGs Locally
 
@@ -89,56 +114,12 @@ airflow dags test mongodb_to_questdb_etl 2025-01-01
 1. Always use catchup=False unless you need historical backfills
 2. Set max_active_runs=1 for DAGs that shouldn't run concurrently
 3. Use XCom to pass data between tasks (for small data)
-4. Use Variables for configuration instead of hardcoding
+4. Store configuration in per-DAG YAML files instead of hardcoding
 5. Add proper logging for debugging
 6. Handle errors gracefully with try/except blocks
 7. Use execute_batch for bulk database operations
 8. Tag your DAGs for organization
-
-## Customizing the MongoDB → QuestDB ETL
-
-### Adjust MongoDB Query
-
-Edit the extract_from_mongodb function:
-
-```python
-query = {
-    "timestamp": {"$gt": last_sync},
-    "status": "active"  # Add filters
-}
-```
-
-### Modify Data Transformation
-
-Edit the transform_data function to match your schema:
-
-```python
-transformed_record = {
-    'timestamp': doc.get('timestamp'),
-    'your_field': doc.get('your_field'),
-    # Add your fields here
-}
-```
-
-### Update QuestDB Schema
-
-Edit the load_to_questdb function's CREATE TABLE statement:
-
-```sql
-CREATE TABLE IF NOT EXISTS your_table (
-    timestamp TIMESTAMP,
-    your_field SYMBOL,
-    -- Add your columns
-) timestamp(timestamp) PARTITION BY DAY;
-```
-
-## Setting Airflow Variables
-
-In Airflow UI (https://airflow.decepticon.io):
-
-1. Go to Admin → Variables
-2. Click + to add new variable
-3. Set Key/Value pairs (see Configuration Variables above)
+9. Keep DAG code and configuration together in this repository
 
 ## Troubleshooting
 
@@ -154,21 +135,9 @@ In Airflow UI (https://airflow.decepticon.io):
 - Check task logs in Airflow UI
 - Verify database connectivity
 - Check Airflow Variables are set correctly
-- Verify MongoDB/QuestDB credentials
+- Verify service credentials
 
 ### Import errors
 
-Dependencies need to be installed in Airflow image. Contact cluster admin to add:
-```dockerfile
-RUN pip install pymongo psycopg2-binary
-```
-
-## Support
-
-- Airflow UI: https://airflow.decepticon.io
-- Documentation: https://airflow.apache.org/docs/
-- Cluster Issues: Contact DevOps team
-
-## License
-
-Internal use only - Decepticon cluster
+- Check that required dependencies are installed in Airflow image
+- Contact cluster admin to add missing packages to the Docker image

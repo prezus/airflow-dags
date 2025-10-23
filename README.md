@@ -41,8 +41,9 @@ Here's the README for your airflow-dags repository:
   ```python
   pymongo
   psycopg2-binary
+  ```
 
-  Deployment
+## Deployment
 
   This repository is automatically synced to Airflow via git-sync every 60 seconds.
 
@@ -53,17 +54,18 @@ Here's the README for your airflow-dags repository:
   - Path: dags/
   - Sync Interval: 60 seconds
 
-  Development
+## Development
 
-  Adding a New DAG
+### Adding a New DAG
 
   1. Create a new Python file in the dags/ directory
   2. Define your DAG using Airflow 3.x syntax
   3. Commit and push to main branch
   4. DAG will appear in Airflow UI within 60 seconds
 
-  Testing DAGs Locally
+### Testing DAGs Locally
 
+  ```bash
   # Install Airflow
   pip install apache-airflow==3.0.2
 
@@ -81,8 +83,9 @@ Here's the README for your airflow-dags repository:
 
   # Test DAG
   airflow dags test mongodb_to_questdb_etl 2025-01-01
+  ```
 
-  DAG Best Practices
+### DAG Best Practices
 
   1. Always use catchup=False unless you need historical backfills
   2. Set max_active_runs=1 for DAGs that shouldn't run concurrently
@@ -93,38 +96,47 @@ Here's the README for your airflow-dags repository:
   7. Use execute_batch for bulk database operations
   8. Tag your DAGs for organization
 
-  Customizing the MongoDB → QuestDB ETL
+## Customizing the MongoDB → QuestDB ETL
 
-  Adjust MongoDB Query
+### Adjust MongoDB Query
 
   Edit the extract_from_mongodb function:
+
+  ```python
 
   query = {
       "timestamp": {"$gt": last_sync},
       "status": "active"  # Add filters
   }
+  ```
 
-  Modify Data Transformation
+### Modify Data Transformation
 
   Edit the transform_data function to match your schema:
+
+  ```python
 
   transformed_record = {
       'timestamp': doc.get('timestamp'),
       'your_field': doc.get('your_field'),
       # Add your fields here
   }
+  ```
 
-  Update QuestDB Schema
+### Update QuestDB Schema
 
   Edit the load_to_questdb function's CREATE TABLE statement:
+
+  ```sql
 
   CREATE TABLE IF NOT EXISTS your_table (
       timestamp TIMESTAMP,
       your_field SYMBOL,
       -- Add your columns
   ) timestamp(timestamp) PARTITION BY DAY;
+  ```
 
-  Setting Airflow Variables
+## Setting Airflow Variables
 
   In Airflow UI (https://airflow.decepticon.io):
 
@@ -132,41 +144,35 @@ Here's the README for your airflow-dags repository:
   2. Click + to add new variable
   3. Set Key/Value pairs (see Configuration Variables above)
 
-  Troubleshooting
+## Troubleshooting
 
-  DAG not appearing in UI
+### DAG not appearing in UI
 
   - Check that file is in dags/ directory
   - Check for Python syntax errors: python dags/your_dag.py
   - Check Airflow scheduler logs
   - Wait up to 60 seconds for git-sync
 
-  Task failures
+### Task failures
 
   - Check task logs in Airflow UI
   - Verify database connectivity
   - Check Airflow Variables are set correctly
   - Verify MongoDB/QuestDB credentials
 
-  Import errors
+### Import errors
 
   Dependencies need to be installed in Airflow image. Contact cluster admin to add:
+  ```dockerfile
   RUN pip install pymongo psycopg2-binary
+  ```
 
-  Support
+## Support
 
   - Airflow UI: https://airflow.decepticon.io
   - Documentation: https://airflow.apache.org/docs/
   - Cluster Issues: Contact DevOps team
 
-  License
+## License
 
   Internal use only - Decepticon cluster
-
-  This README provides:
-  - Repository structure
-  - DAG documentation
-  - Configuration instructions
-  - Development guidelines
-  - Customization examples
-  - Troubleshooting tips
